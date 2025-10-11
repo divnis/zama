@@ -1,1 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Encrypted Compute Demo (Masking)</title>
+  <style>
+    body { font-family: Inter, Arial, sans-serif; background:#0b1020; color:#e6eef8; display:flex; align-items:center; justify-content:center; min-height:100vh; margin:0; }
+    .card { width:720px; background:#0f1724; padding:24px; border-radius:12px; box-shadow: 0 10px 30px rgba(0,0,0,0.6);}
+    h1 { margin:0 0 8px 0; font-size:20px; color:#bfe3ff; }
+    p { margin:0 0 16px 0; color:#9fb6d1; }
+    label { display:block; margin-top:8px; color:#cde6ff; font-weight:600; }
+    input { width:140px; padding:8px; margin-right:8px; border-radius:8px; border:1px solid #1f2b3a; background:#071027; color:#e6eef8; }
+    button { padding:10px 14px; border-radius:8px; border:none; background:#1b8cff; color:#fff; cursor:pointer; }
+    .row { display:flex; align-items:center; gap:8px; margin-bottom:12px; }
+    .log { background:#061226; padding:12px; border-radius:8px; color:#b9d8ff; font-size:14px; margin-top:12px; min-height:56px;}
+    .cipher { font-family: monospace; color:#89d0ff; background:#03101a; padding:6px 8px; border-radius:6px; }
+    .note { font-size:13px; color:#9fb6d1; margin-top:12px; }
+    .stats { margin-top:12px; color:#cfe7ff; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Interactive Demo — Compute on "Encrypted" Data (Masking)</h1>
+    <p>Try the demo: the client masks inputs locally, the server sums the masked numbers and returns the masked sum. The client unmasks locally to reveal the real result. The server never sees your raw numbers.</p>
+
+    <div class="row">
+      <label>Value A</label>
+      <input id="a" type="number" value="12" />
+      <label>Value B</label>
+      <input id="b" type="number" value="8" />
+      <button id="run">Run encrypted add</button>
+    </div>
+
+    <div class="row">
+      <div>
+        <div>Masked A:</div>
+        <div id="maskedA" class="cipher">—</div>
+      </div>
+      <div>
+        <div>Masked B:</div>
+        <div id="maskedB" class="cipher">—</div>
+      </div>
+      <div>
+        <div>Server (masked) sum:</div>
+        <div id="maskedSum" class="cipher">—</div>
+      </div>
+    </div>
+
+    <div class="log" id="log">Click <b>Run encrypted add</b> to try.</div>
+
+    <div class="stats" id="result">Result: —</div>
+
+    <div class="note">
+      <strong>Note:</strong> This is a <em>teaching demo</em> that demonstrates the privacy idea. For real FHE (compute on encrypted data for arbitrary ops), you'd use Concrete / FHEVM on the server. This demo proves the concept for additive operations without sending raw inputs to the server.
+    </div>
+  </div>
+
+<script>
+function randIntBetween(min, max) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+document.getElementById('run').addEventListener('click', async () => {
+  const a = Number(document.getElementById('a').value || 0);
+  const b = Number(document.getElementById('b').value || 0);
+
+  // Generate random masks (large)
+  const r1 = randIntBetween(1e6, 9e6);
+  const r2 = randIntBetween(1e6, 9e6);
+
+  const maskedA = a + r1;
+  const maskedB = b + r2;
+
+  document.getElementById('maskedA').textContent = maskedA;
+  document.getElementById('maskedB').textContent = maskedB;
+  document.getElementById('log').textContent = 'Sending masked inputs to server → server will compute masked sum.';
+
+  try {
+    const resp = await fetch('/compute_sum', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ masked_values: [maskedA, maskedB] })
+    });
+    const data = await resp.json();
+    if (data.error) {
+      document.getElementById('log').textContent = 'Server error: ' + JSON.stringify(data);
+      return;
+    }
+
+    const maskedSum = Number(data.masked_sum);
+    document.getElementById('maskedSum').textContent = maskedSum;
+
+    // Client-side unmask: subtract r1+r2
+    const unmasked = maskedSum - (r1 + r2);
+
+    document.getElementById('result').textContent = `Result: ${unmasked}  (server_time: ${data.server_time_ms} ms)`;
+    document.getElementById('log').textContent = 'Client unmasks locally — the server never saw the raw numbers.';
+  } catch (e) {
+    document.getElementById('log').textContent = 'Network error: ' + e.message;
+  }
+});
+</script>
+</body>
+</html>
 
