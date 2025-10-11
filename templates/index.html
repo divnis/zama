@@ -3,104 +3,228 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>Encrypted Compute Demo (Masking)</title>
+  <title>Zama Demo — Safe Encrypted Compute (Yellow Theme)</title>
   <style>
-    body { font-family: Inter, Arial, sans-serif; background:#0b1020; color:#e6eef8; display:flex; align-items:center; justify-content:center; min-height:100vh; margin:0; }
-    .card { width:720px; background:#0f1724; padding:24px; border-radius:12px; box-shadow: 0 10px 30px rgba(0,0,0,0.6);}
-    h1 { margin:0 0 8px 0; font-size:20px; color:#bfe3ff; }
-    p { margin:0 0 16px 0; color:#9fb6d1; }
-    label { display:block; margin-top:8px; color:#cde6ff; font-weight:600; }
-    input { width:140px; padding:8px; margin-right:8px; border-radius:8px; border:1px solid #1f2b3a; background:#071027; color:#e6eef8; }
-    button { padding:10px 14px; border-radius:8px; border:none; background:#1b8cff; color:#fff; cursor:pointer; }
-    .row { display:flex; align-items:center; gap:8px; margin-bottom:12px; }
-    .log { background:#061226; padding:12px; border-radius:8px; color:#b9d8ff; font-size:14px; margin-top:12px; min-height:56px;}
-    .cipher { font-family: monospace; color:#89d0ff; background:#03101a; padding:6px 8px; border-radius:6px; }
-    .note { font-size:13px; color:#9fb6d1; margin-top:12px; }
-    .stats { margin-top:12px; color:#cfe7ff; }
+    :root {
+      --bg: #ffd54a;       /* warm Zama-ish yellow */
+      --card: #fff7df;
+      --text: #0b1220;
+      --muted: #2a3a4a;
+      --accent: #0b4fc1;
+      --mono: "Courier New", monospace;
+    }
+    html,body{height:100%;margin:0;font-family:Inter,Arial,sans-serif;background:var(--bg);color:var(--text);}
+    .wrap{min-height:100%;display:flex;align-items:center;justify-content:center;padding:30px;}
+    .card{width:820px;background:var(--card);border-radius:14px;padding:22px;box-shadow:0 8px 30px rgba(11,17,32,0.12);border:2px solid rgba(11,17,32,0.06);}
+    h1{margin:0 0 8px 0;font-size:20px;color:var(--text)}
+    p.lead{margin:0 0 16px 0;color:var(--muted);line-height:1.4}
+    .row{display:flex;gap:10px;align-items:center;margin-bottom:12px}
+    input[type="text"], input[type="number"], textarea {
+      flex:1;padding:12px;border-radius:10px;border:1px solid rgba(11,17,32,0.08);background:transparent;color:var(--text);font-size:15px;
+    }
+    button { background:var(--accent); color:#fff; border:none; padding:10px 14px;border-radius:10px; cursor:pointer; font-weight:600;}
+    .small {font-size:13px;color:var(--muted)}
+    .cipher {font-family:var(--mono);background:#f4e7b3;padding:8px;border-radius:8px;border:1px dashed rgba(11,17,32,0.06); color:var(--text)}
+    .notice {background:#ffd44d;padding:12px;border-radius:8px;border-left:4px solid #ffb300;margin-bottom:12px; font-weight:700;color:#071026}
+    .danger {background:#ffefc7;padding:12px;border-radius:8px;border-left:4px solid #e53935;color:#6b2b2b;margin-bottom:14px;}
+    .stats {margin-top:10px;color:var(--muted)}
+    .footer {margin-top:14px;font-size:13px;color:var(--muted)}
+    .flex-between{display:flex;justify-content:space-between;gap:10px;align-items:center}
+    .muted-pill{background:#fff4d8;padding:6px 10px;border-radius:999px;border:1px solid rgba(11,17,32,0.04);color:var(--muted);font-weight:600}
   </style>
 </head>
 <body>
-  <div class="card">
-    <h1>Interactive Demo — Compute on "Encrypted" Data (Masking)</h1>
-    <p>Try the demo: the client masks inputs locally, the server sums the masked numbers and returns the masked sum. The client unmasks locally to reveal the real result. The server never sees your raw numbers.</p>
-
-    <div class="row">
-      <label>Value A</label>
-      <input id="a" type="number" value="12" />
-      <label>Value B</label>
-      <input id="b" type="number" value="8" />
-      <button id="run">Run encrypted add</button>
-    </div>
-
-    <div class="row">
-      <div>
-        <div>Masked A:</div>
-        <div id="maskedA" class="cipher">—</div>
+  <div class="wrap">
+    <div class="card" role="main">
+      <div class="flex-between">
+        <div>
+          <h1>Zama Demo — Safe “Encrypted” Compute</h1>
+          <p class="lead">This interactive demo shows the idea: client-side data is converted into a fingerprint and masked locally, the server only sees masked blobs, and the client unmasks locally. <strong>It is educational only — not real FHE.</strong></p>
+        </div>
+        <div class="muted-pill">Demo (safe)</div>
       </div>
-      <div>
-        <div>Masked B:</div>
-        <div id="maskedB" class="cipher">—</div>
+
+      <div class="danger">
+        ⚠️ <strong>Do NOT paste real private keys / seed phrases / wallet recovery phrases / API secrets.</strong><br>
+        This demo is for learning only. Use the example button if you want to test safely.
       </div>
-      <div>
-        <div>Server (masked) sum:</div>
-        <div id="maskedSum" class="cipher">—</div>
+
+      <!-- Inputs -->
+      <div style="margin-bottom:8px">
+        <label class="small">Input A (number, text or phrase)</label>
+        <input id="inputA" type="text" placeholder="e.g. 42  — or enter any text (not your seed phrase!)" />
       </div>
-    </div>
 
-    <div class="log" id="log">Click <b>Run encrypted add</b> to try.</div>
+      <div style="margin-bottom:8px">
+        <label class="small">Input B (number, text or phrase)</label>
+        <input id="inputB" type="text" placeholder="e.g. 10  — or enter non-sensitive text" />
+      </div>
 
-    <div class="stats" id="result">Result: —</div>
+      <div class="row">
+        <button id="run">Run safe encrypted add</button>
+        <button id="example" style="background:#0b4fc1;">Use safe example</button>
+        <div class="small" style="margin-left:auto;color:var(--muted)">Server endpoint: <span style="font-family:var(--mono)">/compute_sum</span></div>
+      </div>
 
-    <div class="note">
-      <strong>Note:</strong> This is a <em>teaching demo</em> that demonstrates the privacy idea. For real FHE (compute on encrypted data for arbitrary ops), you'd use Concrete / FHEVM on the server. This demo proves the concept for additive operations without sending raw inputs to the server.
+      <!-- Display -->
+      <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:14px;">
+        <div style="flex:1;min-width:200px">
+          <div class="small">Client fingerprint A</div>
+          <div id="fingerA" class="cipher">—</div>
+        </div>
+        <div style="flex:1;min-width:200px">
+          <div class="small">Client fingerprint B</div>
+          <div id="fingerB" class="cipher">—</div>
+        </div>
+        <div style="flex:1;min-width:200px">
+          <div class="small">Server (masked) sum</div>
+          <div id="maskedSum" class="cipher">—</div>
+        </div>
+      </div>
+
+      <div class="row" style="margin-top:12px">
+        <div style="flex:1">
+          <div class="small">Client unmasked (simulated) result</div>
+          <div id="result" class="cipher">—</div>
+        </div>
+        <div style="width:200px;text-align:right">
+          <div class="small">Server time</div>
+          <div id="time" class="cipher">—</div>
+        </div>
+      </div>
+
+      <div class="stats">
+        <strong>How it works (brief):</strong> If you type text, the client computes a SHA-256 fingerprint and converts a small slice into a numeric fingerprint. That number is masked with a large random value and sent to the server. The server only sees masked numbers and returns the masked sum. The client subtracts its masks locally to reveal the final (simulated) result. <em>This avoids sending raw text to the server.</em>
+      </div>
+
+      <div class="footer">
+        Tip: click <strong>Use safe example</strong> to try demo without typing. This is NOT real FHE — when you are ready for a real FHE demo we can replace the server with Concrete/TFHE-rs and the client with a WASM crypto module.
+      </div>
     </div>
   </div>
 
 <script>
-function randIntBetween(min, max) {
-  return Math.floor(Math.random() * (max - min + 1)) + min;
+/*
+  Safe client-side demo:
+  - Accepts numbers or text
+  - For numbers: uses value directly
+  - For text: computes SHA-256, takes first 16 hex chars -> BigInt -> numeric fingerprint
+  - Adds large random masks and sends masked numbers to server (/compute_sum)
+  - Server sums masked numbers and returns masked_sum
+  - Client unmasks and displays the simulated result
+  - IMPORTANT: Do NOT paste real seed phrases / private keys. This demo is educational only.
+*/
+
+async function sha256Hex(str) {
+  const enc = new TextEncoder();
+  const data = enc.encode(str);
+  const hash = await crypto.subtle.digest('SHA-256', data);
+  const h = Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2,'0')).join('');
+  return h; // hex string
 }
 
+function hexSliceToNumber(hex, digits=12) {
+  // take first `digits` hex chars (safe) and convert to number mod 1e12
+  const slice = hex.slice(0, Math.min(hex.length, digits));
+  // convert to BigInt and reduce to safe integer
+  const n = BigInt('0x' + slice);
+  return Number(n % BigInt(1e12)); // keep it safe for JSON
+}
+
+// random large mask generator
+function randMask() {
+  // produce a random integer between 1e8 and 9e12
+  const min = 1e8;
+  const max = 9e12;
+  // use crypto-safe randomness
+  const r = BigInt(Math.floor(Math.random() * 1e9));
+  // fallback: use Math.random for simplicity
+  return Math.floor(min + Math.random() * (max - min));
+}
+
+document.getElementById('example').addEventListener('click', () => {
+  document.getElementById('inputA').value = 'example_user_1';
+  document.getElementById('inputB').value = 'example_user_2';
+});
+
 document.getElementById('run').addEventListener('click', async () => {
-  const a = Number(document.getElementById('a').value || 0);
-  const b = Number(document.getElementById('b').value || 0);
+  const rawA = document.getElementById('inputA').value.trim();
+  const rawB = document.getElementById('inputB').value.trim();
 
-  // Generate random masks (large)
-  const r1 = randIntBetween(1e6, 9e6);
-  const r2 = randIntBetween(1e6, 9e6);
+  if (!rawA || !rawB) {
+    alert('Please enter two values (or click Use safe example).');
+    return;
+  }
 
-  const maskedA = a + r1;
-  const maskedB = b + r2;
+  // Defensive warning: do not accept long-looking seed formats (soft block)
+  const lower = (rawA + ' ' + rawB).toLowerCase();
+  if (lower.includes('seed') || lower.split(' ').length > 24) {
+    if (!confirm('Your input looks like a long phrase. Are you sure you are NOT pasting a real seed/secret? Press Cancel to abort.')) {
+      return;
+    }
+  }
 
-  document.getElementById('maskedA').textContent = maskedA;
-  document.getElementById('maskedB').textContent = maskedB;
-  document.getElementById('log').textContent = 'Sending masked inputs to server → server will compute masked sum.';
+  // Convert inputs to numeric fingerprints
+  let nA, nB, hexA, hexB;
 
+  // Helper to get numeric fingerprint
+  async function fingerprint(value) {
+    // If pure number (only digits, optional leading minus), use numeric value
+    if (/^-?\d+$/.test(value)) {
+      return {num: Number(value), hex: null};
+    }
+    // else compute SHA-256 and take slice as number
+    const h = await sha256Hex(value);
+    const num = hexSliceToNumber(h, 16); // small numeric fingerprint
+    return {num, hex: h};
+  }
+
+  const fA = await fingerprint(rawA);
+  const fB = await fingerprint(rawB);
+  nA = fA.num; hexA = fA.hex;
+  nB = fB.num; hexB = fB.hex;
+
+  // Show fingerprints (do not show raw input)
+  document.getElementById('fingerA').textContent = hexA ? (hexA.slice(0,12) + '…') : String(nA);
+  document.getElementById('fingerB').textContent = hexB ? (hexB.slice(0,12) + '…') : String(nB);
+
+  // create masks
+  const r1 = randMask();
+  const r2 = randMask();
+
+  const maskedA = Number(nA) + Number(r1);
+  const maskedB = Number(nB) + Number(r2);
+
+  // show masked locally
+  document.getElementById('maskedSum').textContent = '…waiting';
+
+  // send masked numbers to server
   try {
     const resp = await fetch('/compute_sum', {
       method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ masked_values: [maskedA, maskedB] })
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({masked_values: [maskedA, maskedB]})
     });
     const data = await resp.json();
     if (data.error) {
-      document.getElementById('log').textContent = 'Server error: ' + JSON.stringify(data);
+      document.getElementById('maskedSum').textContent = 'server error';
+      document.getElementById('result').textContent = 'Error: ' + (data.detail || data.error);
       return;
     }
-
     const maskedSum = Number(data.masked_sum);
-    document.getElementById('maskedSum').textContent = maskedSum;
+    document.getElementById('maskedSum').textContent = String(maskedSum);
 
-    // Client-side unmask: subtract r1+r2
+    // client unmask
     const unmasked = maskedSum - (r1 + r2);
-
-    document.getElementById('result').textContent = `Result: ${unmasked}  (server_time: ${data.server_time_ms} ms)`;
-    document.getElementById('log').textContent = 'Client unmasks locally — the server never saw the raw numbers.';
-  } catch (e) {
-    document.getElementById('log').textContent = 'Network error: ' + e.message;
+    // For numeric inputs we can show numeric result; for text inputs we show numeric fingerprint sum (educational)
+    const displayText = `Simulated result (numeric fingerprint): ${unmasked}`;
+    document.getElementById('result').textContent = displayText;
+    document.getElementById('time').textContent = `${data.server_time_ms} ms`;
+  } catch (err) {
+    document.getElementById('maskedSum').textContent = 'network error';
+    document.getElementById('result').textContent = 'Network error: ' + err.message;
   }
 });
 </script>
 </body>
 </html>
-
