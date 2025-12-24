@@ -1,3 +1,5 @@
+# Python dependencies for prototype backend
+# Flask for web server
+# Flask-CORS for cross-origin requests
 flask
 flask-cors
-
